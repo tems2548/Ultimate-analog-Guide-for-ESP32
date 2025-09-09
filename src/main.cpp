@@ -43,7 +43,7 @@
       Vo = 0.200267 * Vin
    So the divider reduces voltage to ~20.03% of input.
 
-   in this case we will use 2nd-order polynomial
+   in this case we will use 2nd-order polynomial 
 
 */
 
