@@ -44,34 +44,59 @@
    So the divider reduces voltage to ~20.03% of input.
    and it have so many way to find voltage Offset
 
-   1.Single-point Calibration  ==> good for only specific Voltage value
-      Voffset = Vtrue / Vmeasure
+   normal with non - Calibration will get voltage by
+   find Divider gain:
+   Divider gain = (R1 + R2) / R2 ==> theoretical scaling
 
-   2.Two-point Calibration     ==> good for specific voltage interval
+   calculate Vmeasure:
+   Vmeasure = Vadc * Divider gain
+
+  ? 1.Single-point Calibration  ==> good for only specific Voltage value
+      this method is Works fine if you don’t need perfect accuracy across the whole range.
+
+      find Calibration factor:
+      Calibration factor = Vtrue / Vmeasure
+
+      V_calibrated = Vmeasure * Calibration factor
+
+  ? 2.Two-point Calibration     ==> good for specific voltage interval
       this method will remove Slope error and Offset error
+
       Vmeasure_1 = First measure Value 
       Vmeasure_2 = Second measure Value
 
       Vtrue_1 = First true Value
       Vtrue_2 = Second true Vlaue
 
-      Scale = (Vtrue_2 - Vtrue_1) / (Vmeasure_2 - Vmeasure_1)
-      
+             !slope = (Vtrue_2 - Vtrue_1) / (Vmeasure_2 - Vmeasure_1)
 
+      it slope from 2 point 
+      it can be calculate with linear formula y = ax + b
+      from this equaltion we will need to find "b" coefficient and we know y and x in this equation
+      y = Vtrue , x = Vmeasure , "a" = slope
 
+      we get: 
+             Vtrue = (slope * Vmeasure) + b
+      and we calculate to find "b" substitute variable values from (Vmeasure_1,Vtrue_1):
+             b = Vtrue - (slope * Vmeasure) 
+      It will be said that:
+             offset = b
+      in final from we get:
+             !V_calibrated = (slope * Vmeasure) + offset
 
-
-
-   3.
-   in this case we will use 2nd-order polynomial
-
+  ? 3.2nd-order polynomial     ==> good for specific voltage interval
+   
    Vmeasure = Voltage from Sensor
    Vtrue = Voltage from Meter
 
+
+
+  ? all 
 */
 
-// value Should be 2.000 but in this case i will use 2nd-order polynomial 
+// value Should be 2.000 
 #define voltage_divider_offset 2.000 
+
 float R1 = 29890.00;  // Resistor 1
 float R2 = 7485.00;   // Resistor 2
 
