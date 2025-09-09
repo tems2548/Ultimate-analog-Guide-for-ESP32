@@ -42,8 +42,31 @@
       Vo = 7485 /(29890 + 7485) * Vin
       Vo = 0.200267 * Vin
    So the divider reduces voltage to ~20.03% of input.
+   and it have so many way to find voltage Offset
 
+   1.Single-point Calibration  ==> good for only specific Voltage value
+      Voffset = Vtrue / Vmeasure
+
+   2.Two-point Calibration     ==> good for specific voltage interval
+      this method will remove Slope error and Offset error
+      Vmeasure_1 = First measure Value 
+      Vmeasure_2 = Second measure Value
+
+      Vtrue_1 = First true Value
+      Vtrue_2 = Second true Vlaue
+
+      Scale = (Vtrue_2 - Vtrue_1) / (Vmeasure_2 - Vmeasure_1)
+      
+
+
+
+
+
+   3.
    in this case we will use 2nd-order polynomial
+
+   Vmeasure = Voltage from Sensor
+   Vtrue = Voltage from Meter
 
 */
 
@@ -78,16 +101,5 @@ void Unadjusted_ADC_Read() {
 }
 
 void adjusted_ADC_Read() {
-  int rawValue = analogRead(ADC_pin);
-  delay(1000);
-  Serial.println("Raw ADC is " + String(rawValue));
 
-  float VoltageADC = (rawValue * 3.3) / 4096.00;
-  Serial.println("Voltage ADC is " + String(VoltageADC));
-
-  float Voltage = VoltageADC * ((R1 + R2) / R2);
-  Serial.println("Voltage is " + String(Voltage));
-
-  Serial.println("-------------------------------");
-  Serial.println(" ");
 }
