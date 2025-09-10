@@ -158,7 +158,7 @@ float SingleP_Calibration_voltage_Read(
    float Calibration_factor = Vtrue / Vmeter;
 
    //Calculate Correction_factor
- // Obtain the device ADC reference voltage
+   //Obtain the device ADC reference voltage
    float vref = adc_chars.vref;
    float Correction_factor =  1100.0000 / adc_chars.vref;
 
@@ -167,8 +167,11 @@ float SingleP_Calibration_voltage_Read(
    
    //Calculate Calibration_Voltage
    float Calibration_Voltage = VoltageADC * divider_gain * Calibration_factor * Manual_calibrate * Correction_factor;
-  // float Calibration_Voltage = VoltageADC * divider_gain;
+   // float Calibration_Voltage = VoltageADC * divider_gain;
    return Calibration_Voltage;
+}
+float Linear_Calibration_voltage_Read(){
+
 }
 
 void setup() {
@@ -176,13 +179,19 @@ void setup() {
   pinMode(ADC_pin, INPUT);
 
   //Setup analog pin
-  esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+  esp_adc_cal_characterize(ADC_UNIT_1, 
+                           ADC_ATTEN_DB_12, 
+                           ADC_WIDTH_BIT_12, 
+                           1100, &adc_chars);
 }
 
 
 void loop() {
   
-  float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,3.3300,2.6431,1.0235);  //34
+  float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,
+                                                3.3300,
+                                                2.6431,
+                                                1.0235);  //Pin 34
   float data1 = Unadjusted_ADC_Read(ADC1_CHANNEL_6);
 
   if(DEBUG == true){ 
