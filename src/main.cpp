@@ -57,9 +57,25 @@
       find Calibration factor:
       Calibration factor = Vtrue / Vmeasure
 
-      V_calibrated = Vmeasure * Calibration factor
+      V_calibrated = Vadc * Divider gain * Calibration factor
+      and we can use another Calibration value to make value more accurate by
+      adding Correction factor in to this calibration 
 
-  ? 2.Two-point Calibration     ==> good for specific voltage interval
+      Correction factor is the internal voltage that the ADC 
+      (Analog-to-Digital Converter) uses as its "measurement yardstick".
+      On the ESP32, it’s nominally 1100 mV (1.1 V). 
+      That means the ADC compares the input voltage to this reference to decide the digital code.
+      Unlike some MCUs (like Arduino Uno with a very stable 5.0 V reference), 
+      the ESP32’s Vref is not fixed — it varies between 1000 mV and 1200 mV depending on the chip.
+      so we can use { esp_adc_cal_characterize() } to read vref and we can make value more accurate
+              
+             !Correction factor =  1100 / Vref(esp_adc_cal_characterize)
+      
+      In final form is:
+
+             !V_calibrated = Vadc * Divider gain * Calibration factor * Correction factor 
+
+  ? 2.Two-point Calibration [linearity]     ==> good for specific voltage interval
       this method will remove Slope error and Offset error
 
       Vmeasure_1 = First measure Value 
@@ -78,20 +94,29 @@
       we get: 
              Vtrue = (slope * Vmeasure) + b
       and we calculate to find "b" substitute variable values from (Vmeasure_1,Vtrue_1):
-             b = Vtrue - (slope * Vmeasure) 
+             b = Vtrue_1 - (slope * Vmeasure_1) 
       It will be said that:
              offset = b
       in final from we get:
              !V_calibrated = (slope * Vmeasure) + offset
 
-  ? 3.2nd-order polynomial     ==> good for specific voltage interval
+  ? 3.2nd-order polynomial --> quadratic calibration [non-linearity]     ==> best if you measure 3+ calibration voltages, accounts for ESP32 ADC non-linearity
    
-   Vmeasure = Voltage from Sensor
-   Vtrue = Voltage from Meter
+   Vmeasure1,2,3 = Voltage from Sensor
 
+   Vtrue1,2,3 = Voltage from Meter
 
+  find V_calibrated by quadratic formula and you find coefficients "α" , "β" , "γ" 
+  by Plugging each point of Vmeasure and Vtrue into the quadratic formula
+  so we will get system of equations: 
 
-  ? all 
+  |     Vtrue1 = (α * Vmeasure1)^2 + (β * Vmeasure1) + γ ---1
+  |     Vtrue2 = (α * Vmeasure2)^2 + (β * Vmeasure2) + γ ---2
+  |     Vtrue3 = (α * Vmeasure3)^2 + (β * Vmeasure3) + γ ---3
+
+  form this system of equations you can solve for coefficients "α" , "β" , "γ" 
+  and in final we will get calibration curve is:
+             !V_calibrated = (α * Vmeasure)^2 + (β * Vmeasure) + γ
 */
 
 // value Should be 2.000 
