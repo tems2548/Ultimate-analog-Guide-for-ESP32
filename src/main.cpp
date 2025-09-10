@@ -132,20 +132,13 @@ float Unadjusted_ADC_Read(adc1_channel_t Raw_AnalogPIN) {
   float VoltageADC = ((4096.000 - adc1_get_raw(Raw_AnalogPIN)) * 3.3) / 4096.00;
   float Voltage = VoltageADC * ((R1 + R2) / R2);
   return Voltage;
-  // Serial.println("Raw ADC is " + String(rawValue));
-  // Serial.println("Raw 1 ADC is " + String(adc1_get_raw(ADC1_CHANNEL_6)));
-  // Serial.println("Voltage ADC is " + String(VoltageADC));
-  // Serial.println("Voltage is " + String(Voltage));
-
-  // Serial.println("-------------------------------");
-  // Serial.println(" ");
-  
 }
 
 float SingleP_Calibration_voltage_Read(
   adc1_channel_t Raw_AnalogPIN,
   float Vtrue,
-  float Vmeter
+  float Vmeter,
+  float Manual_calibration
 ) {
    //find Average value
    long Sum = 0;
@@ -154,7 +147,8 @@ float SingleP_Calibration_voltage_Read(
      Sum += adc1_get_raw(Raw_AnalogPIN);
    }
    float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
-
+   
+   //Calculate voltage
    float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
 
    //Calculate Divider gain
@@ -169,7 +163,7 @@ float SingleP_Calibration_voltage_Read(
    float Correction_factor =  1100.0000 / adc_chars.vref;
 
    //Calculate manual Calibration
-   float Manual_calibrate = 1.015;// Adjust for ultimate accuracy if reading too high then use e.g. 0.99, too low use 1.01
+   float Manual_calibrate = Manual_calibration;// Adjust for ultimate accuracy if reading too high then use e.g. 0.99, too low use 1.01
    
    //Calculate Calibration_Voltage
    float Calibration_Voltage = VoltageADC * divider_gain * Calibration_factor * Manual_calibrate * Correction_factor;
@@ -181,22 +175,22 @@ void setup() {
   Serial.begin(9600);
   pinMode(ADC_pin, INPUT);
 
+  //Setup analog pin
   esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, 1100, &adc_chars);
 }
 
 
 void loop() {
   
-  float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,3.3300,2.6431);  //34
+  float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,3.3300,2.6431,1.0235);  //34
   float data1 = Unadjusted_ADC_Read(ADC1_CHANNEL_6);
 
-  
-
+  if(DEBUG == true){ 
   Serial.println("");
   delay(1000);
-  Serial.println("Calibration_voltage" + String(data,4) + " | " + "Uncalibration_voltage" + String(data1,4) );
-  Serial.print("---------------------------------");
+  Serial.println("Calibration_voltage = " + String(data,4) + " | " + "Uncalibration_voltage = " + String(data1,4) );
+  Serial.print("-------------------------------------------------------------");
   Serial.println("");
-  //Unadjusted_ADC_Read();
+  }
 }
 
