@@ -1,6 +1,6 @@
 #include <Arduino.h>
 /* 
-      This is for ESP32 ADC ONLY!!! 
+      This is for ESP32 ADC ONLY!!! [successive-approximation-register]
       This code is from datasheets and example form espressif
       datasheet esp32 ----> https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/peripherals/adc.html#adc-channels     
       tutorial        ----> https://embeddedexplorer.com/esp32-adc-esp-idf-tutorial/
@@ -34,7 +34,7 @@
 //------------------------------------------------------------//
 
 // define ADC pin
-#define ADC_pin 35 
+#define ADC_pin 34  
 
 /* 
    find divider reduces voltage by voltage divider formula
@@ -119,37 +119,84 @@
              !V_calibrated = (α * Vmeasure)^2 + (β * Vmeasure) + γ
 */
 
-// value Should be 2.000 
-#define voltage_divider_offset 2.000 
+bool DEBUG = true;
 
-float R1 = 29890.00;  // Resistor 1
-float R2 = 7485.00;   // Resistor 2
+float R1 = 29890.00000;  // Resistor 1
+float R2 = 7485.00000;   // Resistor 2
 
+esp_adc_cal_characteristics_t adc_chars;
+
+float Unadjusted_ADC_Read() {
+  delay(100);
+
+  float VoltageADC = ((4096.000 - adc1_get_raw(ADC1_CHANNEL_6)) * 3.3) / 4096.00;
+  float Voltage = VoltageADC * ((R1 + R2) / R2);
+return Voltage;
+  // Serial.println("Raw ADC is " + String(rawValue));
+  // Serial.println("Raw 1 ADC is " + String(adc1_get_raw(ADC1_CHANNEL_6)));
+  // Serial.println("Voltage ADC is " + String(VoltageADC));
+  // Serial.println("Voltage is " + String(Voltage));
+
+  // Serial.println("-------------------------------");
+  // Serial.println(" ");
+  
+}
+
+float SingleP_Calibration_voltage_Read(
+  adc1_channel_t Raw_AnalogPIN,
+  float Vtrue,
+  float Vmeter
+) {
+   //find Average value
+   long Sum = 0;
+   int Number_of_Sample = 100.000;
+   for(int sample = 0;sample < Number_of_Sample;sample++){ 
+     Sum += adc1_get_raw(Raw_AnalogPIN);
+   }
+   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+
+   float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+
+   //Calculate Divider gain
+   float divider_gain = (R1 + R2) / R2;
+
+   //Calculate Calibration factor
+   float Calibration_factor = Vtrue / Vmeter;
+
+   //Calculate Correction_factor
+ // Obtain the device ADC reference voltage
+   float vref = adc_chars.vref;
+   float Correction_factor =  1100.0000 / adc_chars.vref;
+
+   //Calculate manual Calibration
+   float Manual_calibrate = 1.015;// Adjust for ultimate accuracy if reading too high then use e.g. 0.99, too low use 1.01
+   
+   //Calculate Calibration_Voltage
+   float Calibration_Voltage = VoltageADC * divider_gain * Calibration_factor * Manual_calibrate * Correction_factor;
+  // float Calibration_Voltage = VoltageADC * divider_gain;
+   return Calibration_Voltage;
+}
 
 void setup() {
   Serial.begin(9600);
   pinMode(ADC_pin, INPUT);
+
+  esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, 1100, &adc_chars);
 }
+
+
 void loop() {
+  
+  float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,3.3300,2.6431);  //34
+  float data1 = Unadjusted_ADC_Read();
 
+  
 
-}
-
-void Unadjusted_ADC_Read() {
-  int rawValue = analogRead(ADC_pin);
+  Serial.println("");
   delay(1000);
-  Serial.println("Raw ADC is " + String(rawValue));
-
-  float VoltageADC = (rawValue * 3.3) / 4096.00;
-  Serial.println("Voltage ADC is " + String(VoltageADC));
-
-  float Voltage = VoltageADC * ((R1 + R2) / R2);
-  Serial.println("Voltage is " + String(Voltage));
-
-  Serial.println("-------------------------------");
-  Serial.println(" ");
+  Serial.println("Calibration_voltage" + String(data,4) + " | " + "Uncalibration_voltage" + String(data1,4) );
+  Serial.print("---------------------------------");
+  Serial.println("");
+  //Unadjusted_ADC_Read();
 }
 
-void adjusted_ADC_Read() {
-
-}
