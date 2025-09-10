@@ -126,12 +126,12 @@ float R2 = 7485.00000;   // Resistor 2
 
 esp_adc_cal_characteristics_t adc_chars;
 
-float Unadjusted_ADC_Read() {
+float Unadjusted_ADC_Read(adc1_channel_t Raw_AnalogPIN) {
   delay(100);
 
-  float VoltageADC = ((4096.000 - adc1_get_raw(ADC1_CHANNEL_6)) * 3.3) / 4096.00;
+  float VoltageADC = ((4096.000 - adc1_get_raw(Raw_AnalogPIN)) * 3.3) / 4096.00;
   float Voltage = VoltageADC * ((R1 + R2) / R2);
-return Voltage;
+  return Voltage;
   // Serial.println("Raw ADC is " + String(rawValue));
   // Serial.println("Raw 1 ADC is " + String(adc1_get_raw(ADC1_CHANNEL_6)));
   // Serial.println("Voltage ADC is " + String(VoltageADC));
@@ -188,7 +188,7 @@ void setup() {
 void loop() {
   
   float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,3.3300,2.6431);  //34
-  float data1 = Unadjusted_ADC_Read();
+  float data1 = Unadjusted_ADC_Read(ADC1_CHANNEL_6);
 
   
 
