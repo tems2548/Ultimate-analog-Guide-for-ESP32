@@ -1,8 +1,8 @@
 #include <Arduino.h>
-/* 
+/*
       This is for ESP32 ADC ONLY!!! [successive-approximation-register]
       This code is from datasheets and example form espressif
-      datasheet esp32 ----> https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/peripherals/adc.html#adc-channels     
+      datasheet esp32 ----> https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/peripherals/adc.html#adc-channels
       tutorial        ----> https://embeddedexplorer.com/esp32-adc-esp-idf-tutorial/
       Code ADC Accuracy-Improvement from G6EJD
 
@@ -34,11 +34,11 @@
 //------------------------------------------------------------//
 
 // define ADC pin
-#define ADC_pin 34  
+#define ADC_pin 34
 
-/* 
+/*
    find divider reduces voltage by voltage divider formula
-   example in this case R1 = 29890.00 and R2 = 7485.00 
+   example in this case R1 = 29890.00 and R2 = 7485.00
       Vo = 7485 /(29890 + 7485) * Vin
       Vo = 0.200267 * Vin
    So the divider reduces voltage to ~20.03% of input.
@@ -59,26 +59,26 @@
 
       V_calibrated = Vadc * Divider gain * Calibration factor
       and we can use another Calibration value to make value more accurate by
-      adding Correction factor in to this calibration 
+      adding Correction factor in to this calibration
 
-      Correction factor is the internal voltage that the ADC 
+      Correction factor is the internal voltage that the ADC
       (Analog-to-Digital Converter) uses as its "measurement yardstick".
-      On the ESP32, it’s nominally 1100 mV (1.1 V). 
+      On the ESP32, it’s nominally 1100 mV (1.1 V).
       That means the ADC compares the input voltage to this reference to decide the digital code.
-      Unlike some MCUs (like Arduino Uno with a very stable 5.0 V reference), 
+      Unlike some MCUs (like Arduino Uno with a very stable 5.0 V reference),
       the ESP32’s Vref is not fixed — it varies between 1000 mV and 1200 mV depending on the chip.
       so we can use { esp_adc_cal_characterize() } to read vref and we can make value more accurate
-              
+
              !Correction factor =  1100 / Vref(esp_adc_cal_characterize)
-      
+
       In final form is:
 
-             !V_calibrated = Vadc * Divider gain * Calibration factor * Correction factor 
+             !V_calibrated = Vadc * Divider gain * Calibration factor * Correction factor
 
   ? 2.Two-point Calibration [linearity]     ==> good for specific voltage interval
       this method will remove Slope error and Offset error
 
-      Vmeasure_1 = First measure Value 
+      Vmeasure_1 = First measure Value
       Vmeasure_2 = Second measure Value
 
       Vtrue_1 = First true Value
@@ -86,47 +86,48 @@
 
              !slope = (Vtrue_2 - Vtrue_1) / (Vmeasure_2 - Vmeasure_1)
 
-      it slope from 2 point 
+      it slope from 2 point
       it can be calculate with linear formula y = ax + b
       from this equaltion we will need to find "b" coefficient and we know y and x in this equation
       y = Vtrue , x = Vmeasure , "a" = slope
 
-      we get: 
+      we get:
              Vtrue = (slope * Vmeasure) + b
       and we calculate to find "b" substitute variable values from (Vmeasure_1,Vtrue_1):
-             b = Vtrue_1 - (slope * Vmeasure_1) 
+             b = Vtrue_1 - (slope * Vmeasure_1)
       It will be said that:
              offset = b
       in final from we get:
              !V_calibrated = (slope * Vmeasure) + offset
 
   ? 3.2nd-order polynomial --> quadratic calibration [non-linearity]     ==> best if you measure 3+ calibration voltages, accounts for ESP32 ADC non-linearity
-   
+
    Vmeasure1,2,3 = Voltage from Sensor
 
    Vtrue1,2,3 = Voltage from Meter
 
-  find V_calibrated by quadratic formula and you find coefficients "α" , "β" , "γ" 
+  find V_calibrated by quadratic formula and you find coefficients "α" , "β" , "γ"
   by Plugging each point of Vmeasure and Vtrue into the quadratic formula
-  so we will get system of equations: 
+  so we will get system of equations:
 
   |     Vtrue1 = (α * Vmeasure1)^2 + (β * Vmeasure1) + γ ---1
   |     Vtrue2 = (α * Vmeasure2)^2 + (β * Vmeasure2) + γ ---2
   |     Vtrue3 = (α * Vmeasure3)^2 + (β * Vmeasure3) + γ ---3
 
-  form this system of equations you can solve for coefficients "α" , "β" , "γ" 
+  form this system of equations you can solve for coefficients "α" , "β" , "γ"
   and in final we will get calibration curve is:
              !V_calibrated = (α * Vmeasure)^2 + (β * Vmeasure) + γ
 */
 
 bool DEBUG = true;
 
-float R1 = 29890.00000;  // Resistor 1
-float R2 = 7485.00000;   // Resistor 2
+float R1 = 29890.00000; // Resistor 1
+float R2 = 7485.00000;  // Resistor 2
 
 esp_adc_cal_characteristics_t adc_chars;
 
-float Unadjusted_ADC_Read(adc1_channel_t Raw_AnalogPIN) {
+float Unadjusted_ADC_Read(adc1_channel_t Raw_AnalogPIN)
+{
   delay(100);
 
   float VoltageADC = ((4096.000 - adc1_get_raw(Raw_AnalogPIN)) * 3.3) / 4096.00;
@@ -135,111 +136,117 @@ float Unadjusted_ADC_Read(adc1_channel_t Raw_AnalogPIN) {
 }
 
 float SingleP_Calibration_voltage_Read(
-  adc1_channel_t Raw_AnalogPIN,
-  float Vtrue,
-  float Vmeter,
-  float Manual_calibration
-) {
-   //find Average value
-   long Sum = 0;
-   int Number_of_Sample = 100.000;
-   for(int sample = 0;sample < Number_of_Sample;sample++){ 
-     Sum += adc1_get_raw(Raw_AnalogPIN);
-   }
-   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
-   
-   //Calculate voltage
-   float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
-
-   //Calculate Divider gain
-   float divider_gain = (R1 + R2) / R2;
-
-   //Calculate Calibration factor
-   float Calibration_factor = Vtrue / Vmeter;
-
-   //Calculate Correction_factor
-   //Obtain the device ADC reference voltage
-   float vref = adc_chars.vref;
-   float Correction_factor =  1100.0000 / adc_chars.vref;
-
-   //Calculate manual Calibration
-   float Manual_calibrate = Manual_calibration;// Adjust for ultimate accuracy if reading too high then use e.g. 0.99, too low use 1.01
-   
-   //Calculate Calibration_Voltage
-   float Calibration_Voltage = VoltageADC * divider_gain * Calibration_factor * Manual_calibrate * Correction_factor;
-   return Calibration_Voltage;
-}
-float Linear_Calibration_voltage_Read ( 
-  adc1_channel_t Raw_AnalogPIN,
-  float Vtrue_1,
-  float Vtrue_2,
-  float Vmeter_1,
-  float Vmeter_2,
-  float Manual_calibration
-){
-  //find Average value
-   long Sum = 0;
-   int Number_of_Sample = 100.000;
-   for(int sample = 0;sample < Number_of_Sample;sample++){ 
-     Sum += adc1_get_raw(Raw_AnalogPIN);
-   }
-   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
-
-   //Calculate voltage
-   float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
-   
-   //Calculate Divider gain
-   float divider_gain = (R1 + R2) / R2;
-
-   //Calculate slope and find offset coefficient
-   float slope;
-   float offset;
-  if (fabs(Vmeter_2 - Vmeter_1) < 1e-6) {
-    slope = 1.0f;
-    offset= 0.0f;
-}else{
-  //(ADC1_CHANNEL_6  ADC1_CHANNEL_6 ,Vtrue1 0.0550, Vtrue2 14.960,Vmeter_1 0.0004, Vmeter_2 15.1303,1.000)
-   slope = (Vtrue_2 - Vtrue_1) / (Vmeter_2 - Vmeter_1);
-   offset = Vtrue_1 - (slope * Vmeter_1);
-}
-   float Correction_factor =  1100.0000 / adc_chars.vref;
-   //Calculate Calibration_Voltage
-   float Calibration_Voltage = (slope * (VoltageADC * divider_gain)*Correction_factor*Manual_calibration) + offset;
-   return Calibration_Voltage;
+    adc1_channel_t Raw_AnalogPIN,
+    float Vtrue,
+    float Vmeter,
+    float Manual_calibration)
+{
+  // find Average value
+  long Sum = 0;
+  int Number_of_Sample = 100.000;
+  for (int sample = 0; sample < Number_of_Sample; sample++)
+  {
+    Sum += adc1_get_raw(Raw_AnalogPIN);
   }
-void setup() {
+  float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+
+  // Calculate voltage
+  float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+
+  // Calculate Divider gain
+  float divider_gain = (R1 + R2) / R2;
+
+  // Calculate Calibration factor
+  float Calibration_factor = Vtrue / Vmeter;
+
+  // Calculate Correction_factor
+  float Correction_factor = 1100.0000 / adc_chars.vref;
+
+  // Calculate manual Calibration
+  float Manual_calibrate = Manual_calibration; // Adjust for ultimate accuracy if reading too high then use e.g. 0.99, too low use 1.01
+
+  // Calculate Calibration_Voltage
+  float Calibration_Voltage = VoltageADC * divider_gain * Calibration_factor * Manual_calibrate * Correction_factor;
+  return Calibration_Voltage;
+}
+float Linear_Calibration_voltage_Read(
+    adc1_channel_t Raw_AnalogPIN,
+    float Vtrue_1,
+    float Vtrue_2,
+    float Vmeter_1,
+    float Vmeter_2,
+    float Manual_calibration)
+{
+  // find Average value
+  long Sum = 0;
+  int Number_of_Sample = 100.000;
+  for (int sample = 0; sample < Number_of_Sample; sample++)
+  {
+    Sum += adc1_get_raw(Raw_AnalogPIN);
+  }
+  float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+
+  // Calculate voltage
+  float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+
+  // Calculate Divider gain
+  float divider_gain = (R1 + R2) / R2;
+
+  // Calculate slope and find offset coefficient
+  float slope;
+  float offset;
+  if (fabs(Vmeter_2 - Vmeter_1) < 1e-6)
+  {
+    slope = 1.0f;
+    offset = 0.0f;
+  }
+  else
+  {
+    slope = (Vtrue_2 - Vtrue_1) / (Vmeter_2 - Vmeter_1);
+    offset = Vtrue_1 - (slope * Vmeter_1);
+  }
+  // Calculate Correction_factor
+  float Correction_factor = 1100.0000 / adc_chars.vref;
+
+  // Calculate Calibration_Voltage
+  float Calibration_Voltage = (slope * (VoltageADC * divider_gain) * Correction_factor * Manual_calibration) + offset;
+  return Calibration_Voltage;
+}
+void setup()
+{
   Serial.begin(9600);
   pinMode(ADC_pin, INPUT);
 
-  //Setup analog pin
-  esp_adc_cal_characterize(ADC_UNIT_1, 
-                           ADC_ATTEN_DB_12, 
-                           ADC_WIDTH_BIT_12, 
+  // Setup analog pin
+  esp_adc_cal_characterize(ADC_UNIT_1,
+                           ADC_ATTEN_DB_12,
+                           ADC_WIDTH_BIT_12,
                            1100, &adc_chars);
 }
 
-void loop() {
-  
+void loop()
+{
+
   // float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,//Pin 34
   //                                               3.3300,        //Vtrue
   //                                               2.6431,        //Vmeter
   //                                               1.0235);       //manual calibrate
 
-  float data = Linear_Calibration_voltage_Read(ADC1_CHANNEL_6 //Pin 34
-                                               ,1.581,  //Vtrue_1
-                                               9.97,    //Vtrue_2
-                                               0.9333,  //Vmeter_1
-                                               9.2648,  //Vmeter_2
-                                               1.011);  //manual calibrate
+  float data = Linear_Calibration_voltage_Read(ADC1_CHANNEL_6, // Pin 34
+                                               1.581,  // Vtrue_1
+                                               9.97,   // Vtrue_2
+                                               0.9333, // Vmeter_1
+                                               9.2648, // Vmeter_2
+                                               1.011); // manual calibrate
 
   float data1 = Unadjusted_ADC_Read(ADC1_CHANNEL_6);
 
-  if(DEBUG == true){ 
-  Serial.println("");
-  delay(1000);
-  Serial.println("Calibration_voltage = " + String(data,4) + " | " + "Uncalibration_voltage = " + String(data1,4) );
-  Serial.print("-------------------------------------------------------------");
-  Serial.println("");
+  if (DEBUG == true)
+  {
+    Serial.println("");
+    delay(1000);
+    Serial.println("Calibration_voltage = " + String(data, 4) + " | " + "Uncalibration_voltage = " + String(data1, 4));
+    Serial.print("-------------------------------------------------------------");
+    Serial.println("");
   }
 }
-
