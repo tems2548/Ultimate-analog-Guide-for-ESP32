@@ -167,13 +167,46 @@ float SingleP_Calibration_voltage_Read(
    
    //Calculate Calibration_Voltage
    float Calibration_Voltage = VoltageADC * divider_gain * Calibration_factor * Manual_calibrate * Correction_factor;
-   // float Calibration_Voltage = VoltageADC * divider_gain;
    return Calibration_Voltage;
 }
-float Linear_Calibration_voltage_Read(){
+float Linear_Calibration_voltage_Read ( 
+  adc1_channel_t Raw_AnalogPIN,
+  float Vtrue_1,
+  float Vtrue_2,
+  float Vmeter_1,
+  float Vmeter_2,
+  float Manual_calibration
+){
+  //find Average value
+   long Sum = 0;
+   int Number_of_Sample = 100.000;
+   for(int sample = 0;sample < Number_of_Sample;sample++){ 
+     Sum += adc1_get_raw(Raw_AnalogPIN);
+   }
+   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
 
+   //Calculate voltage
+   float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+   
+   //Calculate Divider gain
+   float divider_gain = (R1 + R2) / R2;
+
+   //Calculate slope and find offset coefficient
+   float slope;
+   float offset;
+  if (fabs(Vmeter_2 - Vmeter_1) < 1e-6) {
+    slope = 1.0f;
+    offset= 0.0f;
+}else{
+  //(ADC1_CHANNEL_6  ADC1_CHANNEL_6 ,Vtrue1 0.0550, Vtrue2 14.960,Vmeter_1 0.0004, Vmeter_2 15.1303,1.000)
+   slope = (Vtrue_2 - Vtrue_1) / (Vmeter_2 - Vmeter_1);
+   offset = Vtrue_1 - (slope * Vmeter_1);
 }
-
+   float Correction_factor =  1100.0000 / adc_chars.vref;
+   //Calculate Calibration_Voltage
+   float Calibration_Voltage = (slope * (VoltageADC * divider_gain)*Correction_factor*Manual_calibration) + offset;
+   return Calibration_Voltage;
+  }
 void setup() {
   Serial.begin(9600);
   pinMode(ADC_pin, INPUT);
@@ -185,13 +218,20 @@ void setup() {
                            1100, &adc_chars);
 }
 
-
 void loop() {
   
-  float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,
-                                                3.3300,
-                                                2.6431,
-                                                1.0235);  //Pin 34
+  // float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,//Pin 34
+  //                                               3.3300,        //Vtrue
+  //                                               2.6431,        //Vmeter
+  //                                               1.0235);       //manual calibrate
+
+  float data = Linear_Calibration_voltage_Read(ADC1_CHANNEL_6 //Pin 34
+                                               ,1.581,  //Vtrue_1
+                                               9.97,    //Vtrue_2
+                                               0.9333,  //Vmeter_1
+                                               9.2648,  //Vmeter_2
+                                               1.011);  //manual calibrate
+
   float data1 = Unadjusted_ADC_Read(ADC1_CHANNEL_6);
 
   if(DEBUG == true){ 
