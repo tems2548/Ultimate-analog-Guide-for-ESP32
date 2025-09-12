@@ -121,14 +121,13 @@
 
 bool DEBUG = true;
 
-float R1 = 29890.00000; // Resistor 1
-float R2 = 7485.00000;  // Resistor 2
+float R1 = 29860.00000; // Resistor 1
+float R2 = 7450.00000;  // Resistor 2
 
 esp_adc_cal_characteristics_t adc_chars;
 
 float Unadjusted_ADC_Read(adc1_channel_t Raw_AnalogPIN)
-{
-  delay(100);
+{  delay(100);
 
   float VoltageADC = ((4096.000 - adc1_get_raw(Raw_AnalogPIN)) * 3.3) / 4096.00;
   float Voltage = VoltageADC * ((R1 + R2) / R2);
@@ -185,9 +184,11 @@ float Linear_Calibration_voltage_Read(
     Sum += adc1_get_raw(Raw_AnalogPIN);
   }
   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
-
+ 
   // Calculate voltage
-  float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+  //float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+  uint32_t Vadc_pin_mv = esp_adc_cal_raw_to_voltage((4095.000 - AVG_Raw_AnalogValue), &adc_chars);
+  float VoltageADC = Vadc_pin_mv / 1000.0f;
 
   // Calculate Divider gain
   float divider_gain = (R1 + R2) / R2;
@@ -205,11 +206,16 @@ float Linear_Calibration_voltage_Read(
     slope = (Vtrue_2 - Vtrue_1) / (Vmeter_2 - Vmeter_1);
     offset = Vtrue_1 - (slope * Vmeter_1);
   }
+
   // Calculate Correction_factor
   float Correction_factor = 1100.0000 / adc_chars.vref;
 
   // Calculate Calibration_Voltage
-  float Calibration_Voltage = (slope * (VoltageADC * divider_gain) * Correction_factor * Manual_calibration) + offset;
+  // const float CAL_SLOPE  = 0.985139f;   // a
+  // const float CAL_OFFSET = 0.054606f;   // b
+
+
+  float Calibration_Voltage = (slope * (VoltageADC * divider_gain)* Manual_calibration) + offset;
   return Calibration_Voltage;
 }
 void setup()
@@ -233,11 +239,11 @@ void loop()
   //                                               1.0235);       //manual calibrate
 
   float data = Linear_Calibration_voltage_Read(ADC1_CHANNEL_6, // Pin 34
-                                               1.581,  // Vtrue_1
-                                               9.97,   // Vtrue_2
-                                               0.9333, // Vmeter_1
-                                               9.2648, // Vmeter_2
-                                               1.011); // manual calibrate
+                                               0.0550,  // Vtrue_1
+                                               14.960,   // Vtrue_2
+                                               0.004, // Vmeter_1
+                                               15.1749, // Vmeter_2
+                                               1.000 ); // manual calibrate
 
   float data1 = Unadjusted_ADC_Read(ADC1_CHANNEL_6);
 
