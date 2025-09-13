@@ -127,15 +127,18 @@ float R2 = 7450.00000;  // Resistor 2
 esp_adc_cal_characteristics_t adc_chars;
 
 float determinant3x3(float cof[3][3]){
+  
   // For a matrix A = 
   // | a b c |
   // | d e f |
   // | g h i |
   // The determinant |A| = a(ei − fh) − b(di − fg) + c(dh − eg)
+
   return cof[0][0]*(cof[1][1]*cof[2][2]-cof[1][2]*cof[2][1])
        - cof[0][1]*(cof[1][0]*cof[2][2]-cof[1][2]*cof[2][0])
        + cof[0][2]*(cof[1][0]*cof[2][1]-cof[1][1]*cof[2][0]);
 }
+
 float Unadjusted_ADC_Read(adc1_channel_t Raw_AnalogPIN)
 {  delay(100);
 
@@ -160,7 +163,7 @@ float SingleP_Calibration_voltage_Read(
   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
 
   // Calculate voltage
-  float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+  float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
 
   // Calculate Divider gain
   float divider_gain = (R1 + R2) / R2;
@@ -196,7 +199,7 @@ float Linear_Calibration_voltage_Read(
   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
  
   // Calculate voltage
-  float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+  float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
   //uint32_t Vadc_pin_mv = esp_adc_cal_raw_to_voltage((4095.000 - AVG_Raw_AnalogValue), &adc_chars);
   //float VoltageADC = Vadc_pin_mv / 1000.0f;
 
@@ -248,7 +251,7 @@ float Non_Linear_Calibration_voltage_Read(
   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
  
   // Calculate voltage
-  float VoltageADC = ((4096.000 - AVG_Raw_AnalogValue) * 3.300) / 4096.000;
+  float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
   //uint32_t Vadc_pin_mv = esp_adc_cal_raw_to_voltage((4095.000 - AVG_Raw_AnalogValue), &adc_chars);
   //float VoltageADC = Vadc_pin_mv / 1000.0f;
 
@@ -296,11 +299,51 @@ float Non_Linear_Calibration_voltage_Read(
   float Calibration_Voltage = ((A*V_Unadjust*V_Unadjust) + (B*V_Unadjust) + C ) * Manual_calibration;
   return Calibration_Voltage;
 }
+float ESP32_lib_Calibration(adc1_channel_t Raw_AnalogPIN){
+  long Sum = 0;
+  int Number_of_Sample = 100.000;
+  for (int sample = 0; sample < Number_of_Sample; sample++)
+  {
+    Sum += adc1_get_raw(Raw_AnalogPIN);
+  }
+  float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+  
+  // Calculate voltage
+  uint32_t Vadc_pin_mv = esp_adc_cal_raw_to_voltage(map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095), &adc_chars);
+  float Calibration_Voltage = Vadc_pin_mv / 1000.0f;
+  return Calibration_Voltage;
+}
+
+float Map_value_Calibration(adc1_channel_t Raw_AnalogPIN,
+                            long ADC_raw_min,
+                            long ADC_raw_max)
+{
+  long Sum = 0;
+  int Number_of_Sample = 100.000;
+  for (int sample = 0; sample < Number_of_Sample; sample++)
+  {
+    Sum += adc1_get_raw(Raw_AnalogPIN);
+  }
+  float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+
+  //map() = first linear approximation.
+  //offset correction = fine-tuning to reduce error.
+
+  float mV = map(AVG_Raw_AnalogValue, ADC_raw_min, ADC_raw_max, 0, 16500);
+  float offset = map(mV, 16500, 0, -1000, 1000);
+
+  float Calibration_Voltage = (mV + offset) / 1000.0f;
+  return Calibration_Voltage;
+}
+
+
+float data;
+
 void setup()
 {
   Serial.begin(9600);
   pinMode(ADC_pin, INPUT);
-
+   
   // Setup analog pin
   esp_adc_cal_characterize(ADC_UNIT_1,
                            ADC_ATTEN_DB_12,
@@ -309,34 +352,39 @@ void setup()
 }
 
 void loop()
-{
-  // float data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,//Pin 34
+{ 
+  //!---------------------------- ----> Normal Calculation <---- ----------------------------
+  float raw = Unadjusted_ADC_Read(ADC1_CHANNEL_6);
+
+  //!---------------------------- ----> METHOD 1 <---- ----------------------------
+  // data = SingleP_Calibration_voltage_Read(ADC1_CHANNEL_6,//Pin 34
   //                                               3.3300,        //Vtrue
   //                                               2.6431,        //Vmeter
   //                                               1.0235);       //manual calibrate
 
-  // float data = Linear_Calibration_voltage_Read(ADC1_CHANNEL_6, // Pin 34
+  //!---------------------------- ----> METHOD 2 <---- ----------------------------
+  // data = Linear_Calibration_voltage_Read(ADC1_CHANNEL_6, // Pin 34
   //                                              0.0550,  // Vtrue_1
   //                                              14.960,   // Vtrue_2
   //                                              0.004, // Vmeter_1
   //                                              15.1749, // Vmeter_2
   //                                              1.000 ); // manual calibrate
-  
-    float data = Non_Linear_Calibration_voltage_Read(ADC1_CHANNEL_6, // Pin 34
-                                               2,    // Vtrue_1
-                                               9.99,      // Vtrue_2
-                                               15.09,    // Vtrue_3
 
-                                               1.3436,   // Vmeter_1
-                                               9.28,    // Vmeter_2
-                                               14.99, // Vmeter_3
+  //!---------------------------- ----> METHOD 3 <---- ----------------------------
+  // data = Non_Linear_Calibration_voltage_Read(ADC1_CHANNEL_6, // Pin 34
+  //                                            2,    // Vtrue_1
+  //                                            9.99,      // Vtrue_2
+  //                                            15.09,    // Vtrue_3
+  //                                            1.3436,   // Vmeter_1
+  //                                            9.28,    // Vmeter_2
+  //                                            14.99, // Vmeter_3
+  //                                            1.000 ); // manual calibrate
 
-                                               1.000 ); // manual calibrate
+  //!---------------------------- ----> METHOD 4 <---- ----------------------------
+  // data = Map_value_Calibration(ADC1_CHANNEL_6 , 142 ,3145);
 
-  //  float data = Non_linear_Calibration_voltage_Read();
-
-
-  float raw = Unadjusted_ADC_Read(ADC1_CHANNEL_6);
+  //!---------------------------- ----> METHOD 5 <---- ----------------------------
+  // data = ESP32_lib_Calibration(ADC1_CHANNEL_6);
 
   if (DEBUG == true)
   {
