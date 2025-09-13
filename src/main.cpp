@@ -127,7 +127,7 @@ float R2 = 7450.00000;  // Resistor 2
 esp_adc_cal_characteristics_t adc_chars;
 
 float determinant3x3(float cof[3][3]){
-  
+
   // For a matrix A = 
   // | a b c |
   // | d e f |
