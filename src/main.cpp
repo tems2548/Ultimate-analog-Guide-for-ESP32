@@ -121,8 +121,8 @@
 
 bool DEBUG = true;
 
-float R1 = 29860.00000; // Resistor 1
-float R2 = 7450.00000;  // Resistor 2
+const float R1 = 29860.00000; // Resistor 1
+const float R2 = 7450.00000;  // Resistor 2
 
 esp_adc_cal_characteristics_t adc_chars;
 
@@ -142,8 +142,8 @@ float determinant3x3(float cof[3][3]){
 float Unadjusted_ADC_Read(adc1_channel_t Raw_AnalogPIN)
 {  delay(100);
 
-  float VoltageADC = ((4096.000 - adc1_get_raw(Raw_AnalogPIN)) * 3.3) / 4096.00;
-  float Voltage = VoltageADC * ((R1 + R2) / R2);
+  const float VoltageADC = ((4096.000 - adc1_get_raw(Raw_AnalogPIN)) * 3.3) / 4096.00;
+  const float Voltage = VoltageADC * ((R1 + R2) / R2);
   return Voltage;
 }
 
@@ -155,30 +155,30 @@ float SingleP_Calibration_voltage_Read(
 {
   // find Average value
   long Sum = 0;
-  int Number_of_Sample = 100.000;
+  const int Number_of_Sample = 100.000;
   for (int sample = 0; sample < Number_of_Sample; sample++)
   {
     Sum += adc1_get_raw(Raw_AnalogPIN);
   }
-  float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+  const float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
 
   // Calculate voltage
-  float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
+  const float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
 
   // Calculate Divider gain
-  float divider_gain = (R1 + R2) / R2;
+  const float divider_gain = (R1 + R2) / R2;
 
   // Calculate Calibration factor
-  float Calibration_factor = Vtrue / Vmeter;
+  const float Calibration_factor = Vtrue / Vmeter;
 
   // Calculate Correction_factor
-  float Correction_factor = 1100.0000 / adc_chars.vref;
+  const float Correction_factor = 1100.0000 / adc_chars.vref;
 
   // Calculate manual Calibration
-  float Manual_calibrate = Manual_calibration; // Adjust for ultimate accuracy if reading too high then use e.g. 0.99, too low use 1.01
+  const float Manual_calibrate = Manual_calibration; // Adjust for ultimate accuracy if reading too high then use e.g. 0.99, too low use 1.01
 
   // Calculate Calibration_Voltage
-  float Calibration_Voltage = VoltageADC * divider_gain * Calibration_factor * Manual_calibrate * Correction_factor;
+  const float Calibration_Voltage = VoltageADC * divider_gain * Calibration_factor * Manual_calibrate * Correction_factor;
   return Calibration_Voltage;
 }
 float Linear_Calibration_voltage_Read(
@@ -199,12 +199,12 @@ float Linear_Calibration_voltage_Read(
   float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
  
   // Calculate voltage
-  float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
+  const float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
   //uint32_t Vadc_pin_mv = esp_adc_cal_raw_to_voltage((4095.000 - AVG_Raw_AnalogValue), &adc_chars);
   //float VoltageADC = Vadc_pin_mv / 1000.0f;
 
   // Calculate Divider gain
-  float divider_gain = (R1 + R2) / R2;
+  const float divider_gain = (R1 + R2) / R2;
 
   // Calculate slope and find offset coefficient
   float slope;
@@ -221,14 +221,14 @@ float Linear_Calibration_voltage_Read(
   }
 
   // Calculate Correction_factor
-  float Correction_factor = 1100.0000 / adc_chars.vref;
+  const float Correction_factor = 1100.0000 / adc_chars.vref;
 
   // Calculate Calibration_Voltage
   // const float CAL_SLOPE  = 0.985139f;   // a
   // const float CAL_OFFSET = 0.054606f;   // b
 
 
-  float Calibration_Voltage = (slope * (VoltageADC * divider_gain)* Manual_calibration) + offset;
+  const float Calibration_Voltage = (slope * (VoltageADC * divider_gain)* Manual_calibration) + offset;
   return Calibration_Voltage;
 }
 
@@ -248,19 +248,19 @@ float Non_Linear_Calibration_voltage_Read(
   {
     Sum += adc1_get_raw(Raw_AnalogPIN);
   }
-  float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+  const float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
  
   // Calculate voltage
-  float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
+  const float VoltageADC = (map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095) * 3.300) / 4096.000;
   //uint32_t Vadc_pin_mv = esp_adc_cal_raw_to_voltage((4095.000 - AVG_Raw_AnalogValue), &adc_chars);
   //float VoltageADC = Vadc_pin_mv / 1000.0f;
 
   // Calculate Divider gain
-  float divider_gain = (R1 + R2) / R2;
+  const float divider_gain = (R1 + R2) / R2;
   
-  float Vmeter_1_power = Vmeter_1*Vmeter_1;
-  float Vmeter_2_power = Vmeter_2*Vmeter_2;
-  float Vmeter_3_power = Vmeter_3*Vmeter_3;
+  const float Vmeter_1_power = Vmeter_1*Vmeter_1;
+  const float Vmeter_2_power = Vmeter_2*Vmeter_2;
+  const float Vmeter_3_power = Vmeter_3*Vmeter_3;
 
   // |     Vtrue1 = (α * Vmeter_1)^2 + (β * Vmeter_1) + γ ---1
   // |     Vtrue2 = (α * Vmeter_2)^2 + (β * Vmeter_2) + γ ---2
@@ -287,16 +287,16 @@ float Non_Linear_Calibration_voltage_Read(
   
   float denominator = determinant3x3(main_mat);
 
-  float A = determinant3x3(MAT_A) / denominator;
-  float B = determinant3x3(MAT_B) / denominator;
-  float C = determinant3x3(MAT_C) / denominator;
+  const float A = determinant3x3(MAT_A) / denominator;
+  const float B = determinant3x3(MAT_B) / denominator;
+  const float C = determinant3x3(MAT_C) / denominator;
 
   // Calculate Correction_factor
-  float Correction_factor = 1100.0000 / adc_chars.vref;
+  const float Correction_factor = 1100.0000 / adc_chars.vref;
 
   //calculate Calibration Voltage
-  float V_Unadjust = VoltageADC * divider_gain * Correction_factor;
-  float Calibration_Voltage = ((A*V_Unadjust*V_Unadjust) + (B*V_Unadjust) + C ) * Manual_calibration;
+  const float V_Unadjust = VoltageADC * divider_gain * Correction_factor;
+  const float Calibration_Voltage = ((A*V_Unadjust*V_Unadjust) + (B*V_Unadjust) + C ) * Manual_calibration;
   return Calibration_Voltage;
 }
 float ESP32_lib_Calibration(adc1_channel_t Raw_AnalogPIN){
@@ -306,11 +306,11 @@ float ESP32_lib_Calibration(adc1_channel_t Raw_AnalogPIN){
   {
     Sum += adc1_get_raw(Raw_AnalogPIN);
   }
-  float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+  const float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
   
   // Calculate voltage
-  uint32_t Vadc_pin_mv = esp_adc_cal_raw_to_voltage(map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095), &adc_chars);
-  float Calibration_Voltage = Vadc_pin_mv / 1000.0f;
+  const uint32_t Vadc_pin_mv = esp_adc_cal_raw_to_voltage(map(AVG_Raw_AnalogValue, 4095, 0, 0, 4095), &adc_chars);
+  const float Calibration_Voltage = Vadc_pin_mv / 1000.0f;
   return Calibration_Voltage;
 }
 
@@ -324,15 +324,15 @@ float Map_value_Calibration(adc1_channel_t Raw_AnalogPIN,
   {
     Sum += adc1_get_raw(Raw_AnalogPIN);
   }
-  float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
+  const float AVG_Raw_AnalogValue = Sum / (float)Number_of_Sample;
 
   //map() = first linear approximation.
   //offset correction = fine-tuning to reduce error.
 
-  float mV = map(AVG_Raw_AnalogValue, ADC_raw_min, ADC_raw_max, 0, 16500);
-  float offset = map(mV, 16500, 0, -1000, 1000);
+  const float mV = map(AVG_Raw_AnalogValue, ADC_raw_min, ADC_raw_max, 0, 16500);
+  const float offset = map(mV, 16500, 0, -1000, 1000);
 
-  float Calibration_Voltage = (mV + offset) / 1000.0f;
+  const float Calibration_Voltage = (mV + offset) / 1000.0f;
   return Calibration_Voltage;
 }
 
